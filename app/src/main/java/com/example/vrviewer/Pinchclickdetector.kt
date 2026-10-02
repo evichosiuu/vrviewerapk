@@ -12,13 +12,7 @@ package com.example.vrviewer
  * A propósito NO recalcula la distancia entre landmarks[4] y
  * landmarks[8] desde cero: reutiliza el `pinch` (0f..1f) que ya
  * calcula HandGesture.compute(), que ya viene normalizado por el
- * tamaño de la mano (dist(muñeca, nudillo medio)). Con una distancia
- * ABSOLUTA fija (p. ej. "< 0.04f" en unidades de landmark crudas), el
- * umbral se vuelve más fácil o más difícil de cruzar según qué tan
- * cerca esté la mano de la cámara, porque pulgar e índice se
- * comprimen hacia el centro cuando la mano se aleja. Normalizando por
- * el tamaño de la mano, el click se siente igual de sensible sin
- * importar la distancia mano-cámara.
+ * tamaño de la mano (dist(muñeca, nudillo medio)).
  */
 class PinchClickDetector(
     // Umbral para EMPEZAR el click. pinch=1f es "dedos tocándose del todo".
@@ -41,6 +35,9 @@ class PinchClickDetector(
         isPinching = if (isPinching) pinch > releaseThreshold else pinch > pressThreshold
         return isPinching && !wasPinching
     }
+
+    /** Returns true as long as the pinch condition remains held. */
+    fun isHeld(): Boolean = isPinching
 
     fun reset() {
         isPinching = false

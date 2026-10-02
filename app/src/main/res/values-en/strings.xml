@@ -6,7 +6,10 @@
     <string name="str_connect_subtitle">Connect your PC with SteamVR</string>
     <string name="str_connected">Connected</string>
     <string name="str_view_tutorial">View tutorial</string>
-    <string name="str_use_hub_menu">🖐️ Usar Menú Hub</string>
+    <string name="str_use_hub_menu">🖐️ Use Hub Menu</string>
+    <string name="str_view_sbs_videos">🎬 View SBS videos</string>
+    <string name="str_pause">Pause</string>
+    <string name="str_play">Play</string>
 
     <!-- Stream -->
     <string name="str_connecting_stream">Connecting to stream…</string>

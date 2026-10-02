@@ -7,6 +7,9 @@
     <string name="str_connected">Conectado</string>
     <string name="str_view_tutorial">Ver tutorial</string>
     <string name="str_use_hub_menu">🖐️ Usar Menú Hub</string>
+    <string name="str_view_sbs_videos">🎬 Ver videos SBS</string>
+    <string name="str_pause">Pausa</string>
+    <string name="str_play">Reproducir</string>
 
     <!-- Stream -->
     <string name="str_connecting_stream">Conectando al stream…</string>

@@ -19,7 +19,15 @@ data class HandPose(
     // true solo en el frame en que el pinch (pulgar+índice) acaba de
     // empezar -- ver PinchClickDetector. Es un pulso de un frame, no
     // un estado sostenido mientras se mantiene el pinch.
-    val clicked: Boolean = false
+    val clicked: Boolean = false,
+    val pinchMiddle: Float = 0f,
+    val pinchRing: Float = 0f,
+    val pinchPinky: Float = 0f,
+    val buttonAPressed: Boolean = false,
+    val buttonBPressed: Boolean = false,
+    val buttonSystemPressed: Boolean = false,
+    val joyX: Float = 0f,
+    val joyY: Float = 0f
 ) {
 
     fun curlArray(): FloatArray = floatArrayOf(curlThumb, curlIndex, curlMiddle, curlRing, curlPinky)

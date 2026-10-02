@@ -1116,7 +1116,8 @@
                 window = hubWindowController,
                 onTouchDown = { u, v -> hubBrowser?.touchDown(u, v) },
                 onTouchMove = { u, v -> hubBrowser?.touchMove(u, v) },
-                onTouchUp   = { u, v -> hubBrowser?.touchUp(u, v) }
+                onTouchUp   = { u, v -> hubBrowser?.touchUp(u, v) },
+                onPointerUpdate = { u, v, active -> hubBrowser?.updatePointer(u, v, active) }
             )
     
             sixDofTracker?.stop()
