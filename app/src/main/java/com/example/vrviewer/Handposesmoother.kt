@@ -48,18 +48,17 @@ class HandPoseSmoother(
             return raw
         }
 
-        val effectiveSlerp = if (precisionMode) quatSlerpFactor * 0.5f else quatSlerpFactor
-
+        val alphaMultiplier = if (precisionMode) 0.5f else 1.0f
         val sx = fx.filter(raw.x, timestampMs)
         val sy = fy.filter(raw.y, timestampMs)
         val sz = fz.filter(raw.z, timestampMs)
 
-        slerpTowards(raw.qx, raw.qy, raw.qz, raw.qw, effectiveSlerp)
+        slerpTowards(raw.qx, raw.qy, raw.qz, raw.qw, quatSlerpFactor * alphaMultiplier)
 
-        grip += (raw.grip - grip) * gripPinchAlpha
-        pinch += (raw.pinch - pinch) * gripPinchAlpha
+        grip += (raw.grip - grip) * gripPinchAlpha * alphaMultiplier
+        pinch += (raw.pinch - pinch) * gripPinchAlpha * alphaMultiplier
         val rawCurls = raw.curlArray()
-        for (i in curls.indices) curls[i] += (rawCurls[i] - curls[i]) * gripPinchAlpha
+        for (i in curls.indices) curls[i] += (rawCurls[i] - curls[i]) * gripPinchAlpha * alphaMultiplier
 
         wasTracked = true
 

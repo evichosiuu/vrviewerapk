@@ -60,7 +60,7 @@ object HandGesture {
         val pinchMid  = (1f - pinchMidDist / 0.9f).coerceIn(0f, 1f)
         val pinchRing = (1f - pinchRingDist / 0.9f).coerceIn(0f, 1f)
         val pinchPinky= (1f - pinchPinkyDist / 0.9f).coerceIn(0f, 1f)
-
+        return floatArrayOf(pinchMid, pinchRing, pinchPinky)
         return floatArrayOf(pinchMid, pinchRing, pinchPinky)
     }
 }

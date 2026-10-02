@@ -7,7 +7,31 @@
     <string name="str_connected">Conectado</string>
     <string name="str_view_tutorial">Ver tutorial</string>
     <string name="str_use_hub_menu">🖐️ Usar Menú Hub</string>
-    <string name="str_view_sbs_videos">🎬 Ver videos SBS</string>
+    <string name="str_view_sbs_videos">🎬 Ver vídeos SBS</string>
+    <string name="str_hand_controls">🖐️ Controles de Manos</string>
+    <string name="str_hand_controls_title">Controles y Gestos de Rastreo de Manos</string>
+    <string name="str_gesture_pinch_title">👌 Pellizco (Índice + Pulgar)</string>
+    <string name="str_gesture_pinch_desc">Clic / Selección en pantalla / Mover ventanas en Menú Hub</string>
+    <string name="str_gesture_grip_title">✊ Puño / Agarre (Grip)</string>
+    <string name="str_gesture_grip_desc">Grip / Trigger en SteamVR / Agarrar objetos</string>
+    <string name="str_gesture_point_title">☝️ Apuntar con Índice</string>
+    <string name="str_gesture_point_desc">Puntero láser para interactuar en el Menú Hub</string>
+    <string name="str_gesture_walk_title">👆 Doblar Índice (Mano Izquierda)</string>
+    <string name="str_gesture_walk_desc">Avanzar / Caminar hacia adelante en la escena VR</string>
+    <string name="str_gesture_buttons_title">🤏 Otros Pellizcos (Botones)</string>
+    <string name="str_gesture_buttons_desc">Pulgar + Medio: Botón A / X&#10;Pulgar + Anular: Botón B / Y&#10;Pulgar + Meñique: Menú / System</string>
+    <string name="str_gesture_joycons_title">🕹 Joy-Cons Opcionales</string>
+    <string name="str_gesture_joycons_desc">Combina la posición por cámara con rotación exacta y botones físicos de Nintendo Joy-Con</string>
+
+    <!-- Menú Hub / Configuración -->
+    <string name="str_hub_settings">⚙ Configuración</string>
+    <string name="str_hub_settings_title">Configuración del Menú Hub</string>
+    <string name="str_hub_hand_monitor_title">Estado de Rastreo de Manos (Estilo SteamVR)</string>
+    <string name="str_hand_left">Mano Izquierda</string>
+    <string name="str_hand_right">Mano Derecha</string>
+    <string name="str_hand_detected">🟢 Detectada</string>
+    <string name="str_hand_lost">🔴 No detectada</string>
+    <string name="str_show_skeleton_overlay">Mostrar vista de cámara y esqueleto</string>
     <string name="str_pause">Pausa</string>
     <string name="str_play">Reproducir</string>
 
