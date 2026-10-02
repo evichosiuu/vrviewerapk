@@ -23,16 +23,13 @@ class HandPoseSmoother(
     private var hasState = false
     private var wasTracked = false
 
-    /** @param timestampMs System.currentTimeMillis() del frame actual */
-    fun smooth(raw: HandPose, timestampMs: Long): HandPose {
+    fun smooth(raw: HandPose, timestampMs: Long, precisionMode: Boolean = false): HandPose {
         if (!raw.tracked) {
             wasTracked = false
             return raw
         }
 
         if (!hasState || !wasTracked) {
-            // Primera muestra tracked, o la mano recién "reaparece":
-            // arrancar el estado exactamente en el valor crudo.
             reset()
             fx.filter(raw.x, timestampMs)
             fy.filter(raw.y, timestampMs)
@@ -45,16 +42,17 @@ class HandPoseSmoother(
             return raw
         }
 
+        val alphaMultiplier = if (precisionMode) 0.5f else 1.0f
         val sx = fx.filter(raw.x, timestampMs)
         val sy = fy.filter(raw.y, timestampMs)
         val sz = fz.filter(raw.z, timestampMs)
 
-        slerpTowards(raw.qx, raw.qy, raw.qz, raw.qw, quatSlerpFactor)
+        slerpTowards(raw.qx, raw.qy, raw.qz, raw.qw, quatSlerpFactor * alphaMultiplier)
 
-        grip += (raw.grip - grip) * gripPinchAlpha
-        pinch += (raw.pinch - pinch) * gripPinchAlpha
+        grip += (raw.grip - grip) * gripPinchAlpha * alphaMultiplier
+        pinch += (raw.pinch - pinch) * gripPinchAlpha * alphaMultiplier
         val rawCurls = raw.curlArray()
-        for (i in curls.indices) curls[i] += (rawCurls[i] - curls[i]) * gripPinchAlpha
+        for (i in curls.indices) curls[i] += (rawCurls[i] - curls[i]) * gripPinchAlpha * alphaMultiplier
 
         wasTracked = true
 
@@ -67,7 +65,6 @@ class HandPoseSmoother(
         )
     }
 
-
     private fun slerpTowards(tx: Float, ty: Float, tz: Float, tw: Float, t: Float) {
         var dot = qx * tx + qy * ty + qz * tz + qw * tw
         var bx = tx; var by = ty; var bz = tz; var bw = tw
@@ -75,7 +72,6 @@ class HandPoseSmoother(
         if (dot < 0f) { bx = -bx; by = -by; bz = -bz; bw = -bw; dot = -dot }
 
         if (dot > 0.9995f) {
-
             qx += (bx - qx) * t; qy += (by - qy) * t
             qz += (bz - qz) * t; qw += (bw - qw) * t
         } else {

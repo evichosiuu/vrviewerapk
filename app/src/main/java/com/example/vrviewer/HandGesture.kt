@@ -3,9 +3,7 @@ package com.example.vrviewer
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import kotlin.math.hypot
 
-
 object HandGesture {
-
 
     private val FINGERS = listOf(
         5 to 8,   // índice   (índice 0 en el array de curls de abajo)
@@ -18,12 +16,10 @@ object HandGesture {
     private fun dist(a: NormalizedLandmark, b: NormalizedLandmark): Float =
         hypot((a.x() - b.x()).toDouble(), (a.y() - b.y()).toDouble()).toFloat()
 
-
     fun compute(landmarks: List<NormalizedLandmark>): Pair<Float, Float> {
         if (landmarks.size < 21) return 0f to 0f
 
         val wrist = landmarks[0]
-
 
         val handSize  = dist(wrist, landmarks[9]).coerceAtLeast(0.01f)
         val pinchDist = dist(landmarks[4], landmarks[8]) / handSize
@@ -36,7 +32,6 @@ object HandGesture {
             val tipDist = dist(wrist, landmarks[tipIdx])
             var curl = (2.0f - tipDist / mcpDist).coerceIn(0f, 1f)
 
-
             if (i == INDEX_FINGER_SLOT) {
                 curl *= (1f - pinch)
             }
@@ -45,5 +40,16 @@ object HandGesture {
         val grip = curlSum / FINGERS.size
 
         return grip to pinch
+    }
+
+    fun computeExtraPinches(landmarks: List<NormalizedLandmark>): FloatArray {
+        if (landmarks.size < 21) return floatArrayOf(0f, 0f, 0f)
+        val wrist = landmarks[0]
+        val handSize = dist(wrist, landmarks[9]).coerceAtLeast(0.01f)
+        val thumb = landmarks[4]
+        val pinchMiddle = (1f - (dist(thumb, landmarks[12]) / handSize) / 0.9f).coerceIn(0f, 1f)
+        val pinchRing   = (1f - (dist(thumb, landmarks[16]) / handSize) / 0.9f).coerceIn(0f, 1f)
+        val pinchPinky  = (1f - (dist(thumb, landmarks[20]) / handSize) / 0.9f).coerceIn(0f, 1f)
+        return floatArrayOf(pinchMiddle, pinchRing, pinchPinky)
     }
 }
