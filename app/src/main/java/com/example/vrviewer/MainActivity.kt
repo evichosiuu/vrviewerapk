@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.hardware.SensorManager
 import android.media.MediaPlayer
@@ -806,6 +807,107 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var hubOverlayBitmap: Bitmap? = null
+    private var hubOverlayCanvas: Canvas? = null
+
+    private fun renderHubOverlay(leftPose: HandPose, rightPose: HandPose) {
+        if (!hubModeActive) return
+        var bmp = hubOverlayBitmap
+        if (bmp == null || bmp.width != 1280 || bmp.height != 720) {
+            bmp = Bitmap.createBitmap(1280, 720, Bitmap.Config.ARGB_8888)
+            hubOverlayBitmap = bmp
+            hubOverlayCanvas = Canvas(bmp)
+        }
+        val canvas = hubOverlayCanvas ?: return
+        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+
+        if (!::hubWindowController.isInitialized) return
+        val landmarksList = sixDofTracker?.currentNormalizedLandmarks() ?: emptyList()
+        val ctrl = hubWindowController
+        val halfW = 640f
+        val canvasH = 720f
+
+        // Renderizado estereoscópico para ojo izquierdo [0..640] y ojo derecho [640..1280]
+        for ((eyeIndex, eyeOffset) in listOf(0 to 0f, 1 to halfW)) {
+            val eyeSign = if (eyeIndex == 0) -1f else 1f
+
+            // 1) Dibujar esqueletos de manos (simulando manos/controles VR)
+            for ((isRight, pts) in landmarksList) {
+                if (pts.size < 21) continue
+                val linePaint = if (isRight) paintRightLine else paintLeftLine
+                val dotPaint  = if (isRight) paintDotRight else paintDotLeft
+
+                for ((a, b) in SKELETON_CONNECTIONS) {
+                    val pa = pts[a]
+                    val pb = pts[b]
+                    canvas.drawLine(
+                        eyeOffset + pa.first * halfW, pa.second * canvasH,
+                        eyeOffset + pb.first * halfW, pb.second * canvasH,
+                        linePaint
+                    )
+                }
+                for (pt in pts) {
+                    canvas.drawCircle(eyeOffset + pt.first * halfW, pt.second * canvasH, 6f, dotPaint)
+                }
+                canvas.drawCircle(eyeOffset + pts[0].first * halfW, pts[0].second * canvasH, 9f, dotPaint)
+            }
+
+            // 2) Dibujar rayos láser de puntero y retícula tipo Meta Quest 3 / SteamVR
+            for ((isRightHand, hand) in listOf(false to leftPose, true to rightPose)) {
+                if (!hand.tracked) continue
+
+                // Origen del rayo: punta del dedo índice (landmark 8)
+                val handPts = landmarksList.firstOrNull { it.first == isRightHand }?.second
+                val originX = if (handPts != null && handPts.size > 8) {
+                    eyeOffset + handPts[8].first * halfW
+                } else {
+                    eyeOffset + ((hand.x + 1f) * 0.5f) * halfW
+                }
+                val originY = if (handPts != null && handPts.size > 8) {
+                    handPts[8].second * canvasH
+                } else {
+                    ((1f - hand.y) * 0.5f) * canvasH
+                }
+
+                // Posición objetivo del puntero (proyectada con el paralaje del ojo)
+                val winX = ctrl.screenX + eyeSign * ctrl.screenParallax
+                val targetNdcX = if (ctrl.visible) winX else hand.x
+                val targetNdcY = if (ctrl.visible) ctrl.screenY else hand.y
+
+                val targetX = eyeOffset + ((targetNdcX + 1f) * 0.5f) * halfW
+                val targetY = ((1f - targetNdcY) * 0.5f) * canvasH
+
+                val isPinching = hand.pinch > 0.6f || hand.clicked
+                val beamColor = if (isPinching) Color.parseColor("#ff3366") else (if (isRightHand) Color.parseColor("#00e5ff") else Color.parseColor("#00ff88"))
+
+                // Rayo láser del puntero
+                val rayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = beamColor
+                    style = Paint.Style.STROKE
+                    strokeWidth = if (isPinching) 6f else 4f
+                }
+                canvas.drawLine(originX, originY, targetX, targetY, rayPaint)
+
+                // Retícula objetivo estilo Quest 3
+                val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = beamColor
+                    style = Paint.Style.STROKE
+                    strokeWidth = 4f
+                }
+                val dotCenterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = if (isPinching) Color.WHITE else beamColor
+                    style = Paint.Style.FILL
+                }
+
+                val radius = if (isPinching) 20f else 14f
+                canvas.drawCircle(targetX, targetY, radius, ringPaint)
+                canvas.drawCircle(targetX, targetY, 6f, dotCenterPaint)
+            }
+        }
+
+        glRenderer.updateHubCameraBitmap(bmp)
+    }
+
 
 
     private fun refreshUsbStatus() {
@@ -1148,6 +1250,7 @@ class MainActivity : AppCompatActivity() {
         streamStatusOverlayText.text = "Iniciando cámara y ARCore…"
 
         glRenderer.setWindowVisible(true)
+        glRenderer.setHubCameraActive(true)
         hubBrowser?.stop()
         hubBrowser = null
         hubBrowser = HubBrowserView(this, rootLayout) { bmp, release -> glRenderer.updateWindowBitmap(bmp, release) }
@@ -1191,6 +1294,7 @@ class MainActivity : AppCompatActivity() {
         sixDofTracker?.stop()
         sixDofTracker = null
         glRenderer.setWindowVisible(false)
+        glRenderer.setHubCameraActive(false)
 
         if (::hubPointerController.isInitialized) {
             hubPointerController.update(
@@ -1244,6 +1348,8 @@ class MainActivity : AppCompatActivity() {
             lastHubGrabbedState = grabbed
             hubBrowser?.grabbedIndicator = grabbed
         }
+
+        renderHubOverlay(left, right)
 
         if (::hubPointerController.isInitialized) {
             runOnUiThread {
