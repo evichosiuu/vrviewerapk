@@ -135,6 +135,9 @@ class StereoGLRenderer(
         vec2 pos = vScreenPos;
         pos.x -= centerShift;
 
+        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+        bool inWindow = false;
+
         // ── 1) VENTANA FLOTANTE DEL MENÚ HUB ──
         if (uWinVisible > 0.5) {
             float eyeSign = (uEye < 0.5) ? -1.0 : 1.0;
@@ -145,35 +148,46 @@ class StereoGLRenderer(
                     (wx / uWinHalfW) * 0.5 + 0.5,
                     0.5 - (wy / uWinHalfH) * 0.5
                 );
-                gl_FragColor = texture2D(uWindowTex, winUv);
-                return;
+                color = texture2D(uWindowTex, winUv);
+                inWindow = true;
             }
         }
 
-        // ── 2) DISTORSIÓN DE BARRIL ──
-        float r2 = pos.x * pos.x + pos.y * pos.y;
-        float distFactor = 1.0 + uK * r2 + uK * 0.5 * r2 * r2;
-        vec2 distorted = pos * distFactor;
-        distorted.x += centerShift;
+        if (!inWindow) {
+            // ── 2) DISTORSIÓN DE BARRIL ──
+            float r2 = pos.x * pos.x + pos.y * pos.y;
+            float distFactor = 1.0 + uK * r2 + uK * 0.5 * r2 * r2;
+            vec2 distorted = pos * distFactor;
+            distorted.x += centerShift;
 
-        if (distorted.x < -1.0 || distorted.x > 1.0 || distorted.y < -1.0 || distorted.y > 1.0) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
-        }
+            if (distorted.x < -1.0 || distorted.x > 1.0 || distorted.y < -1.0 || distorted.y > 1.0) {
+                gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                return;
+            }
 
-        // ── 3) LUPA RADIAL ──
-        float lupaFactor = mix(1.0, uZoom, clamp(r2, 0.0, 1.0));
-        vec2 magnified = pos * lupaFactor;
-        magnified.x += centerShift;
+            // ── 3) LUPA RADIAL & FONDO ──
+            float lupaFactor = mix(1.0, uZoom, clamp(r2, 0.0, 1.0));
+            vec2 magnified = pos * lupaFactor;
+            magnified.x += centerShift;
 
-        vec2 uv01 = (magnified + 1.0) * 0.5;
-        if (uHubCamActive > 0.5) {
-            gl_FragColor = texture2D(uHubCamTex, uv01);
-        } else {
+            vec2 uv01 = (magnified + 1.0) * 0.5;
             float u = (uEye < 0.5) ? (uv01.x * 0.5) : (0.5 + uv01.x * 0.5);
             vec4 texUv = uStMatrix * vec4(u, uv01.y, 0.0, 1.0);
-            gl_FragColor = texture2D(uTexture, texUv.xy);
+            color = texture2D(uTexture, texUv.xy);
         }
+
+        // ── 4) OVERLAY DE MANOS Y PUNTERO (SIEMPRE AL FRENTE DE LA PESTAÑA DE GOOGLE) ──
+        if (uHubCamActive > 0.5) {
+            float normX = clamp((pos.x + 1.0) * 0.5, 0.0, 1.0);
+            float normY = clamp((1.0 - pos.y) * 0.5, 0.0, 1.0);
+            float overlayU = (uEye < 0.5) ? (normX * 0.5) : (0.5 + normX * 0.5);
+            vec4 handOverlay = texture2D(uHubCamTex, vec2(overlayU, normY));
+            if (handOverlay.a > 0.01) {
+                color = mix(color, handOverlay, handOverlay.a);
+            }
+        }
+
+        gl_FragColor = color;
     }
 """
     }
