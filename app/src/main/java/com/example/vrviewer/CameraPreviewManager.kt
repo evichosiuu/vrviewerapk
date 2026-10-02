@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.PointF
 import android.util.Log
 import android.util.Size
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -21,7 +22,7 @@ class CameraPreviewManager(
 ) {
     private var cameraProvider: ProcessCameraProvider? = null
     private var executor: ExecutorService = Executors.newSingleThreadExecutor()
-
+    private var camera: Camera? = null
 
     private val TARGET_ANALYSIS_SIZE = Size(640, 480)
 
@@ -42,7 +43,6 @@ class CameraPreviewManager(
                 val preview = Preview.Builder().build()
                 preview.setSurfaceProvider(previewView.surfaceProvider)
 
-                // CAMBIO 3 aplicado aquí:
                 val analysis = ImageAnalysis.Builder()
                     .setTargetResolution(TARGET_ANALYSIS_SIZE)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -65,7 +65,7 @@ class CameraPreviewManager(
                 }
 
                 cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(
+                camera = cameraProvider?.bindToLifecycle(
                     owner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
                     preview,
@@ -97,7 +97,6 @@ class CameraPreviewManager(
                 val preview = Preview.Builder().build()
                 preview.setSurfaceProvider(previewView.surfaceProvider)
 
-                // CAMBIO 3 aplicado también al color tracker:
                 val analysis = ImageAnalysis.Builder()
                     .setTargetResolution(TARGET_ANALYSIS_SIZE)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -114,7 +113,7 @@ class CameraPreviewManager(
                 tracker.setupAndAnalyze(analysis, executor)
 
                 cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(
+                camera = cameraProvider?.bindToLifecycle(
                     owner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
                     preview,
@@ -129,13 +128,21 @@ class CameraPreviewManager(
         }, ContextCompat.getMainExecutor(context))
     }
 
+    fun setZoomRatio(zoomRatio: Float) {
+        try {
+            camera?.cameraControl?.setZoomRatio(zoomRatio)
+        } catch (e: Exception) {
+            Log.w("CameraPreviewManager", "Error ajustando zoom de la cámara: ${e.message}")
+        }
+    }
+
     fun stop() {
         stopInternal()
         overlayView.post { overlayView.clear() }
     }
 
     private fun stopInternal() {
-        try { cameraProvider?.unbindAll(); cameraProvider = null } catch (_: Exception) {}
+        try { cameraProvider?.unbindAll(); cameraProvider = null; camera = null } catch (_: Exception) {}
         try { executor.shutdownNow() } catch (_: Exception) {}
     }
 }

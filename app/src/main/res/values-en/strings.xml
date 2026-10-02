@@ -6,8 +6,8 @@
     <string name="str_connect_subtitle">Connect your PC with SteamVR</string>
     <string name="str_connected">Connected</string>
     <string name="str_view_tutorial">View tutorial</string>
-    <string name="str_use_hub_menu">🖐️ Usar Menú Hub</string>
-    <string name="str_view_sbs_videos">🎬 View SBS Videos</string>
+    <string name="str_use_hub_menu">🖐️ Use Hub Menu</string>
+    <string name="str_view_sbs_videos">🎬 View SBS videos</string>
     <string name="str_hand_controls">🖐️ Hand Controls</string>
     <string name="str_hand_controls_title">Hand Tracking Controls &amp; Gestures</string>
     <string name="str_gesture_pinch_title">👌 Pinch (Index + Thumb)</string>
@@ -32,12 +32,12 @@
     <string name="str_hand_detected">🟢 Detected</string>
     <string name="str_hand_lost">🔴 Not detected</string>
     <string name="str_show_skeleton_overlay">Show camera view &amp; skeleton</string>
+    <string name="str_pause">Pause</string>
+    <string name="str_play">Play</string>
 
     <!-- Stream -->
     <string name="str_connecting_stream">Connecting to stream…</string>
     <string name="str_close">Close</string>
-    <string name="str_pause">Pause</string>
-    <string name="str_play">Play</string>
     <string name="str_quality">⚙ Quality</string>
     <string name="str_lenses">🔍 Lenses</string>
     <string name="str_stream_quality_title">Stream quality</string>

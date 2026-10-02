@@ -32,12 +32,12 @@
     <string name="str_hand_detected">🟢 Detectada</string>
     <string name="str_hand_lost">🔴 No detectada</string>
     <string name="str_show_skeleton_overlay">Mostrar vista de cámara y esqueleto</string>
+    <string name="str_pause">Pausa</string>
+    <string name="str_play">Reproducir</string>
 
     <!-- Stream -->
     <string name="str_connecting_stream">Conectando al stream…</string>
     <string name="str_close">Cerrar</string>
-    <string name="str_pause">Pausa</string>
-    <string name="str_play">Reproducir</string>
     <string name="str_quality">⚙ Calidad</string>
     <string name="str_lenses">🔍 Lentes</string>
     <string name="str_stream_quality_title">Calidad de stream</string>

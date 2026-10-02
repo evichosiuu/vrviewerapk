@@ -42,14 +42,25 @@ object HandGesture {
         return grip to pinch
     }
 
+    /**
+     * Compute extra pinch distances for middle, ring, pinky fingers with thumb.
+     * @return FloatArray(3): [pinchMiddle, pinchRing, pinchPinky] (0f..1f)
+     */
     fun computeExtraPinches(landmarks: List<NormalizedLandmark>): FloatArray {
         if (landmarks.size < 21) return floatArrayOf(0f, 0f, 0f)
+
         val wrist = landmarks[0]
+        val thumbTip = landmarks[4]
         val handSize = dist(wrist, landmarks[9]).coerceAtLeast(0.01f)
-        val thumb = landmarks[4]
-        val pinchMiddle = (1f - (dist(thumb, landmarks[12]) / handSize) / 0.9f).coerceIn(0f, 1f)
-        val pinchRing   = (1f - (dist(thumb, landmarks[16]) / handSize) / 0.9f).coerceIn(0f, 1f)
-        val pinchPinky  = (1f - (dist(thumb, landmarks[20]) / handSize) / 0.9f).coerceIn(0f, 1f)
-        return floatArrayOf(pinchMiddle, pinchRing, pinchPinky)
+
+        val pinchMidDist  = dist(thumbTip, landmarks[12]) / handSize
+        val pinchRingDist = dist(thumbTip, landmarks[16]) / handSize
+        val pinchPinkyDist= dist(thumbTip, landmarks[20]) / handSize
+
+        val pinchMid  = (1f - pinchMidDist / 0.9f).coerceIn(0f, 1f)
+        val pinchRing = (1f - pinchRingDist / 0.9f).coerceIn(0f, 1f)
+        val pinchPinky= (1f - pinchPinkyDist / 0.9f).coerceIn(0f, 1f)
+        return floatArrayOf(pinchMid, pinchRing, pinchPinky)
+        return floatArrayOf(pinchMid, pinchRing, pinchPinky)
     }
 }

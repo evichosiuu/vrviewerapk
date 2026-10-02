@@ -23,6 +23,10 @@ class HandPoseSmoother(
     private var hasState = false
     private var wasTracked = false
 
+    /**
+     * @param timestampMs System.currentTimeMillis() del frame actual
+     * @param precisionMode Si es true, aplica suavizado adicional cuando se realiza un pinch
+     */
     fun smooth(raw: HandPose, timestampMs: Long, precisionMode: Boolean = false): HandPose {
         if (!raw.tracked) {
             wasTracked = false
@@ -30,6 +34,8 @@ class HandPoseSmoother(
         }
 
         if (!hasState || !wasTracked) {
+            // Primera muestra tracked, o la mano recién "reaparece":
+            // arrancar el estado exactamente en el valor crudo.
             reset()
             fx.filter(raw.x, timestampMs)
             fy.filter(raw.y, timestampMs)
