@@ -23,8 +23,11 @@ class HandPoseSmoother(
     private var hasState = false
     private var wasTracked = false
 
-    /** @param timestampMs System.currentTimeMillis() del frame actual */
-    fun smooth(raw: HandPose, timestampMs: Long): HandPose {
+    /**
+     * @param timestampMs System.currentTimeMillis() del frame actual
+     * @param precisionMode Si es true, aplica suavizado adicional cuando se realiza un pinch
+     */
+    fun smooth(raw: HandPose, timestampMs: Long, precisionMode: Boolean = false): HandPose {
         if (!raw.tracked) {
             wasTracked = false
             return raw
@@ -45,11 +48,13 @@ class HandPoseSmoother(
             return raw
         }
 
+        val effectiveSlerp = if (precisionMode) quatSlerpFactor * 0.5f else quatSlerpFactor
+
         val sx = fx.filter(raw.x, timestampMs)
         val sy = fy.filter(raw.y, timestampMs)
         val sz = fz.filter(raw.z, timestampMs)
 
-        slerpTowards(raw.qx, raw.qy, raw.qz, raw.qw, quatSlerpFactor)
+        slerpTowards(raw.qx, raw.qy, raw.qz, raw.qw, effectiveSlerp)
 
         grip += (raw.grip - grip) * gripPinchAlpha
         pinch += (raw.pinch - pinch) * gripPinchAlpha
@@ -67,7 +72,6 @@ class HandPoseSmoother(
         )
     }
 
-
     private fun slerpTowards(tx: Float, ty: Float, tz: Float, tw: Float, t: Float) {
         var dot = qx * tx + qy * ty + qz * tz + qw * tw
         var bx = tx; var by = ty; var bz = tz; var bw = tw
@@ -75,7 +79,6 @@ class HandPoseSmoother(
         if (dot < 0f) { bx = -bx; by = -by; bz = -bz; bw = -bw; dot = -dot }
 
         if (dot > 0.9995f) {
-
             qx += (bx - qx) * t; qy += (by - qy) * t
             qz += (bz - qz) * t; qw += (bw - qw) * t
         } else {
