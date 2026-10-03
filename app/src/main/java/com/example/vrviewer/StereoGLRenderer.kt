@@ -306,6 +306,7 @@ class StereoGLRenderer(
             bgBitmapDirty = false
         }
 
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
         if (windowBitmapDirty) {
             val bmp = pendingWindowBitmap
             if (bmp != null) {
@@ -315,9 +316,9 @@ class StereoGLRenderer(
                 pendingWindowRelease = null
             }
             windowBitmapDirty = false
+        } else {
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, windowTextureId)
         }
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, windowTextureId)
         GLES20.glUniform1i(uWindowTexLoc, 1)
         GLES20.glUniform1f(uWinVisibleLoc, if (windowVisible) 1f else 0f)
         GLES20.glUniform1f(uWinXLoc, windowX)
@@ -326,6 +327,7 @@ class StereoGLRenderer(
         GLES20.glUniform1f(uWinHalfHLoc, windowHalfH)
         GLES20.glUniform1f(uWinParallaxLoc, windowParallax)
 
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE2)
         if (hubCamBitmapDirty) {
             val bmp = pendingHubCamBitmap
             if (bmp != null) {
@@ -333,9 +335,9 @@ class StereoGLRenderer(
                 GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0)
             }
             hubCamBitmapDirty = false
+        } else {
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, hubCamTextureId)
         }
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE2)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, hubCamTextureId)
         GLES20.glUniform1i(uHubCamTexLoc, 2)
         GLES20.glUniform1f(uHubCamActiveLoc, if (hubCameraActive) 1f else 0f)
 

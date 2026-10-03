@@ -234,7 +234,6 @@ class HubBrowserView(
         pointerU = u
         pointerV = v
         pointerActive = active
-        captureFrameThrottled()
     }
 
     fun start(initialUrl: String = "https://www.google.com") {
@@ -413,26 +412,6 @@ class HubBrowserView(
         try {
             val canvas = Canvas(target)
             wv.draw(canvas)
-
-            // Feedback visual: dibujar puntero si está activo
-            if (pointerActive) {
-                val cx = pointerU * widthPx
-                val cy = pointerV * heightPx
-
-                val outerPaint = Paint().apply {
-                    color = 0xFFFFFFFF.toInt()
-                    style = Paint.Style.STROKE
-                    strokeWidth = 6f
-                    isAntiAlias = true
-                }
-                val innerPaint = Paint().apply {
-                    color = 0xEEFF3366.toInt()
-                    style = Paint.Style.FILL
-                    isAntiAlias = true
-                }
-                canvas.drawCircle(cx, cy, 16f, innerPaint)
-                canvas.drawCircle(cx, cy, 16f, outerPaint)
-            }
 
             if (grabbedIndicator) {
                 val paint = Paint().apply {

@@ -29,12 +29,9 @@ class HubPointerController(
     private val rightState = HandState()
 
     companion object {
-        // Umbrales flexibilizados para mejor respuesta y facilidad de uso:
-        private const val CURL_INDEX_EXTENDED_MAX = 0.45f
-        private const val CURL_OTHERS_FOLDED_MIN  = 0.40f
-        private const val PINCH_MAX_FOR_POINT     = 0.50f
+        private const val PINCH_START_THRESHOLD   = 0.65f
+        private const val PINCH_RELEASE_THRESHOLD = 0.40f
         private const val DEPTH_GATE              = 0.40f // margen en Z
-        private const val PINCH_CLICK_THRESHOLD   = 0.75f // umbral para pinch-to-click
     }
 
     fun update(left: HandPose, right: HandPose) {
@@ -96,36 +93,23 @@ class HubPointerController(
         val v = (0.5f - ((hand.y - window.screenY) / window.screenHalfH) * 0.5f).coerceIn(0f, 1f)
         state.lastU = u
         state.lastV = v
+        state.isPointerActive = true
 
-        val isPointing = hand.curlIndex < CURL_INDEX_EXTENDED_MAX &&
-                hand.curlMiddle > CURL_OTHERS_FOLDED_MIN &&
-                hand.curlRing   > CURL_OTHERS_FOLDED_MIN &&
-                hand.pinch < PINCH_MAX_FOR_POINT
+        val startPinch = hand.pinch >= PINCH_START_THRESHOLD || hand.clicked
+        val holdPinch  = hand.pinch >= PINCH_RELEASE_THRESHOLD || hand.clicked
 
-        val currentlyPinching = hand.pinch >= PINCH_CLICK_THRESHOLD
-        val isPinchingToClick = hand.clicked || (currentlyPinching && !state.wasPinching)
-
-        // Estado del puntero activo para feedback visual
-        state.isPointerActive = isPointing || hand.pinch > 0.3f
-
-        if (isPointing) {
-            state.wasPinching = false
-            if (!state.touching) {
+        if (!state.touching) {
+            if (startPinch) {
                 state.touching = true
                 onTouchDown(u, v)
-            } else {
-                onTouchMove(u, v)
             }
-        } else if (isPinchingToClick) {
-            // Click por gesto de pellizco (pinch 👌)
-            state.wasPinching = true
-            onTouchDown(u, v)
-            onTouchUp(u, v)
         } else {
-            if (!currentlyPinching) {
-                state.wasPinching = false
+            if (holdPinch) {
+                onTouchMove(u, v)
+            } else {
+                state.touching = false
+                onTouchUp(u, v)
             }
-            release(state)
         }
     }
 }

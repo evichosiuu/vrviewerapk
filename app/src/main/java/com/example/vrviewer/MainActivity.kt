@@ -883,9 +883,8 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 // Posición objetivo del puntero (proyectada con el paralaje del ojo)
-                val winX = ctrl.screenX + eyeSign * ctrl.screenParallax
-                val targetNdcX = if (ctrl.visible) winX else hand.x
-                val targetNdcY = if (ctrl.visible) ctrl.screenY else hand.y
+                val targetNdcX = if (ctrl.visible) hand.x + eyeSign * ctrl.screenParallax else hand.x
+                val targetNdcY = hand.y
 
                 val targetX = eyeOffset + ((targetNdcX + 1f) * 0.5f) * halfW
                 val targetY = ((1f - targetNdcY) * 0.5f) * canvasH
