@@ -63,7 +63,7 @@ class VrStreamReceiver(
                 socket.connect(InetSocketAddress(pcIp, STREAM_PORT), CONNECT_TIMEOUT_MS)
                 socket.soTimeout         = CONNECT_TIMEOUT_MS
                 socket.tcpNoDelay        = true
-                socket.receiveBufferSize = 256 * 1024
+                socket.receiveBufferSize = 1024 * 1024
                 val input = socket.getInputStream()
                 onStatus("Stream conectado ✓")
 
@@ -177,83 +177,95 @@ class VrStreamReceiver(
 
     private fun receiveFrames(input: InputStream, codec: MediaCodec) {
         val lenBuf = ByteArray(4)
-        val info   = MediaCodec.BufferInfo()
         var frameCount = 0
 
-        while (running.get()) {
-            readFully(input, lenBuf, 4)
-
-            val totalLen = ((lenBuf[0].toInt() and 0xFF) shl 24) or
-                    ((lenBuf[1].toInt() and 0xFF) shl 16) or
-                    ((lenBuf[2].toInt() and 0xFF) shl  8) or
-                    (lenBuf[3].toInt() and 0xFF)
-
-            if (totalLen <= 0 || totalLen > 8 * 1024 * 1024) {
-                Log.w(TAG, "Longitud inválida: $totalLen")
-                throw RuntimeException("Longitud de paquete inválida: $totalLen")
+        val outputRunning = AtomicBoolean(true)
+        val outputThread = Thread {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY)
+            val outInfo = MediaCodec.BufferInfo()
+            while (running.get() && outputRunning.get()) {
+                try {
+                    val outIdx = codec.dequeueOutputBuffer(outInfo, 10_000L)
+                    if (outIdx >= 0) {
+                        codec.releaseOutputBuffer(outIdx, true)
+                    } else if (outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        Log.d(TAG, "Decoder: formato de salida cambiado en thread dedicado")
+                    }
+                } catch (e: Exception) {
+                    if (running.get() && outputRunning.get()) {
+                        Log.w(TAG, "Error en output thread del decoder: ${e.message}")
+                    }
+                    break
+                }
             }
+        }.apply {
+            name = "VrStreamDecoderOutput"
+            start()
+        }
 
-            val rawPkt = ByteArray(totalLen)
-            readFully(input, rawPkt, totalLen)
+        try {
+            while (running.get()) {
+                readFully(input, lenBuf, 4)
 
-            if (frameCount < 10) {
-                val header = rawPkt.take(minOf(8, totalLen))
-                    .joinToString(" ") { "%02X".format(it) }
-                Log.d(TAG, "Frame #$frameCount raw header [$totalLen bytes]: $header")
-            }
+                val totalLen = ((lenBuf[0].toInt() and 0xFF) shl 24) or
+                        ((lenBuf[1].toInt() and 0xFF) shl 16) or
+                        ((lenBuf[2].toInt() and 0xFF) shl  8) or
+                        (lenBuf[3].toInt() and 0xFF)
 
-            val pkt = ensureAnnexB(rawPkt)
+                if (totalLen <= 0 || totalLen > 8 * 1024 * 1024) {
+                    Log.w(TAG, "Longitud inválida: $totalLen")
+                    throw RuntimeException("Longitud de paquete inválida: $totalLen")
+                }
 
-            val nalType = if (pkt.size > 4) (pkt[4].toInt() and 0x1F) else 0
-            val isParamSet = (nalType == NAL_TYPE_SPS || nalType == NAL_TYPE_PPS)
+                val rawPkt = ByteArray(totalLen)
+                readFully(input, rawPkt, totalLen)
 
-            var inIdx = codec.dequeueInputBuffer(if (isParamSet) 10_000L else 0L)
+                if (frameCount < 10) {
+                    val header = rawPkt.take(minOf(8, totalLen))
+                        .joinToString(" ") { "%02X".format(it) }
+                    Log.d(TAG, "Frame #$frameCount raw header [$totalLen bytes]: $header")
+                }
 
-            if (inIdx < 0 && isParamSet) {
-                Log.w(TAG, "Sin buffer para paquete de config (nalType=$nalType) — reintentando con más margen")
-                inIdx = codec.dequeueInputBuffer(100_000L)
+                val pkt = ensureAnnexB(rawPkt)
+
+                val nalType = if (pkt.size > 4) (pkt[4].toInt() and 0x1F) else 0
+                val isParamSet = (nalType == NAL_TYPE_SPS || nalType == NAL_TYPE_PPS)
+
+                var inIdx = codec.dequeueInputBuffer(if (isParamSet) 10_000L else 0L)
+
+                if (inIdx < 0 && isParamSet) {
+                    Log.w(TAG, "Sin buffer para paquete de config (nalType=$nalType) — reintentando con más margen")
+                    inIdx = codec.dequeueInputBuffer(100_000L)
+                    if (inIdx < 0) {
+                        Log.e(TAG, "No se pudo obtener buffer para SPS/PPS tras reintento — forzando reconexión")
+                        throw RuntimeException("No se pudo entregar paquete de configuración (nalType=$nalType) al decoder")
+                    }
+                }
+
                 if (inIdx < 0) {
-                    Log.e(TAG, "No se pudo obtener buffer para SPS/PPS tras reintento — forzando reconexión")
-                    throw RuntimeException("No se pudo entregar paquete de configuración (nalType=$nalType) al decoder")
+                    inIdx = codec.dequeueInputBuffer(5_000L)
+                }
+
+                if (inIdx >= 0) {
+                    val buf = codec.getInputBuffer(inIdx)!!
+                    buf.clear()
+                    buf.put(pkt)
+
+                    val pts   = 0L
+                    val flags = 0
+                    codec.queueInputBuffer(inIdx, 0, pkt.size, pts, flags)
+                    frameCount++
+
+                    if (frameCount <= 10 || frameCount % 100 == 0) {
+                        Log.d(TAG, "Frame #$frameCount nalType=$nalType len=${pkt.size} isParamSet=$isParamSet")
+                    }
+                } else {
+                    Log.d(TAG, "Sin input buffer (frame #$frameCount nalType=$nalType) — descartado")
                 }
             }
-
-            if (inIdx < 0) {
-                var outIdx = codec.dequeueOutputBuffer(info, 0L)
-                while (outIdx >= 0) {
-                    codec.releaseOutputBuffer(outIdx, true)
-                    outIdx = codec.dequeueOutputBuffer(info, 0L)
-                }
-                inIdx = codec.dequeueInputBuffer(1_000L)
-            }
-
-            if (inIdx >= 0) {
-                val buf = codec.getInputBuffer(inIdx)!!
-                buf.clear()
-                buf.put(pkt)
-
-                val pts   = System.nanoTime() / 1000L
-                val flags = 0
-                codec.queueInputBuffer(inIdx, 0, pkt.size, pts, flags)
-                frameCount++
-
-                if (frameCount <= 10 || frameCount % 100 == 0) {
-                    Log.d(TAG, "Frame #$frameCount nalType=$nalType len=${pkt.size} isParamSet=$isParamSet")
-                }
-            } else {
-                Log.d(TAG, "Sin input buffer (frame #$frameCount nalType=$nalType) — descartado")
-            }
-
-            var outIdx = codec.dequeueOutputBuffer(info, 0L)
-            while (outIdx >= 0) {
-                codec.releaseOutputBuffer(outIdx, true)
-                outIdx = codec.dequeueOutputBuffer(info, 0L)
-            }
-            when (outIdx) {
-                MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ->
-                    Log.d(TAG, "Decoder: formato de salida cambiado")
-                MediaCodec.INFO_TRY_AGAIN_LATER -> { /* normal */ }
-            }
+        } finally {
+            outputRunning.set(false)
+            try { outputThread.interrupt() } catch (_: Exception) {}
         }
     }
 
