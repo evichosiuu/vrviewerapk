@@ -62,6 +62,7 @@ class VrStreamReceiver(
                 socket = Socket()
                 activeSocket = socket
                 socket.connect(InetSocketAddress(pcIp, STREAM_PORT), CONNECT_TIMEOUT_MS)
+                socket.soTimeout         = CONNECT_TIMEOUT_MS
                 socket.tcpNoDelay        = true
                 socket.receiveBufferSize = 2 * 1024 * 1024
                 val input = socket.getInputStream()
@@ -237,7 +238,7 @@ class VrStreamReceiver(
                 buf.put(pkt)
 
                 val pts   = System.nanoTime() / 1000L
-                val flags = if (isParamSet) MediaCodec.BUFFER_FLAG_CODEC_CONFIG else 0
+                val flags = 0
                 codec.queueInputBuffer(inIdx, 0, pkt.size, pts, flags)
                 frameCount++
 

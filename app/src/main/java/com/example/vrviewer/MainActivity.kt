@@ -1260,7 +1260,8 @@ class MainActivity : AppCompatActivity() {
             window = hubWindowController,
             onTouchDown = { u, v -> hubBrowser?.touchDown(u, v) },
             onTouchMove = { u, v -> hubBrowser?.touchMove(u, v) },
-            onTouchUp   = { u, v -> hubBrowser?.touchUp(u, v) }
+            onTouchUp   = { u, v -> hubBrowser?.touchUp(u, v) },
+            onPointerUpdate = { u, v, active -> hubBrowser?.updatePointer(u, v, active) }
         )
 
         sixDofTracker?.stop()
@@ -1278,8 +1279,7 @@ class MainActivity : AppCompatActivity() {
             onHands  = { left, right -> handleHubHands(left, right) },
             onTrackingStarted = {
                 runOnUiThread { streamLoadingOverlay.visibility = View.GONE }
-            },
-            onCameraFrame = { bmp -> drawHubCameraFrame(bmp) }
+            }
         )
         sixDofTracker?.start()
 
@@ -1384,59 +1384,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Dibuja el frame de cámara dos veces lado a lado (izq=der) en el Surface
-     *  que ya alimenta a StereoGLRenderer */
-    private fun drawHubCameraFrame(bmp: Bitmap) {
-        val surface = glInputSurface ?: return
-        if (!surface.isValid) return
-        try {
-            val canvas: Canvas = surface.lockCanvas(null)
-            val halfW = canvas.width / 2
-            canvas.drawBitmap(bmp, null, android.graphics.Rect(0, 0, halfW, canvas.height), null)
-            canvas.drawBitmap(bmp, null, android.graphics.Rect(halfW, 0, canvas.width, canvas.height), null)
-
-            if (hubSkeletonOverlayEnabled) {
-                val landmarksList = sixDofTracker?.currentNormalizedLandmarks() ?: emptyList()
-                drawSkeletonOnHubCanvas(canvas, landmarksList, halfW, canvas.height)
-            }
-
-            surface.unlockCanvasAndPost(canvas)
-        } catch (e: Exception) {
-            android.util.Log.w("HubMode", "No se pudo dibujar frame de cámara: ${e.message}")
-        }
-    }
-
-    private fun drawSkeletonOnHubCanvas(
-        canvas: Canvas,
-        landmarksList: List<Pair<Boolean, List<Pair<Float, Float>>>>,
-        halfW: Int,
-        canvasH: Int
-    ) {
-        val h = canvasH.toFloat()
-        val wHalf = halfW.toFloat()
-
-        for ((isRight, pts) in landmarksList) {
-            if (pts.size < 21) continue
-            val linePaint = if (isRight) paintRightLine else paintLeftLine
-            val dotPaint  = if (isRight) paintDotRight else paintDotLeft
-
-            for (eyeOffset in listOf(0f, wHalf)) {
-                for ((a, b) in SKELETON_CONNECTIONS) {
-                    val pa = pts[a]
-                    val pb = pts[b]
-                    canvas.drawLine(
-                        eyeOffset + pa.first * wHalf, pa.second * h,
-                        eyeOffset + pb.first * wHalf, pb.second * h,
-                        linePaint
-                    )
-                }
-                for (pt in pts) {
-                    canvas.drawCircle(eyeOffset + pt.first * wHalf, pt.second * h, 5f, dotPaint)
-                }
-                canvas.drawCircle(eyeOffset + pts[0].first * wHalf, pts[0].second * h, 8f, dotPaint)
-            }
-        }
-    }
 
 
     // ═══════════════════════ SBS VIDEO ═══════════════════════
