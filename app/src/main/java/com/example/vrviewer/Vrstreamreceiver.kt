@@ -103,6 +103,18 @@ class VrStreamReceiver(
                 MediaFormat.KEY_COLOR_FORMAT,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
             )
+            setInteger(
+                MediaFormat.KEY_COLOR_STANDARD,
+                MediaFormat.COLOR_STANDARD_BT709
+            )
+            setInteger(
+                MediaFormat.KEY_COLOR_TRANSFER,
+                MediaFormat.COLOR_TRANSFER_SDR_VIDEO
+            )
+            setInteger(
+                MediaFormat.KEY_COLOR_RANGE,
+                MediaFormat.COLOR_RANGE_FULL
+            )
             setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 4 * 1024 * 1024)
             setInteger(MediaFormat.KEY_MAX_WIDTH, 1920)
             setInteger(MediaFormat.KEY_MAX_HEIGHT, 1080)
