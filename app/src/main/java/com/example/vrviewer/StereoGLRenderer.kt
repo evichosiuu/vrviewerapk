@@ -174,6 +174,15 @@ class StereoGLRenderer(
             float u = (uEye < 0.5) ? (uv01.x * 0.5) : (0.5 + uv01.x * 0.5);
             vec4 texUv = uStMatrix * vec4(u, uv01.y, 0.0, 1.0);
             color = texture2D(uTexture, texUv.xy);
+
+            // ── Corrección de Gamma & Perfil de Color sRGB ──
+            // Decodificar el vídeo comprimido (con curva gamma ~2.2) para recuperar colores vibrantes y contraste real en pantallas OLED.
+            color.rgb = pow(color.rgb, vec3(2.2));
+            // Aumentar ligeramente la saturación si es necesario para evitar colores lavados
+            float luminance = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+            color.rgb = mix(vec3(luminance), color.rgb, 1.15);
+            // Volver a codificar o recortar adecuadamente
+            color.rgb = clamp(pow(color.rgb, vec3(1.0 / 2.2)), 0.0, 1.0);
         }
 
         // ── 4) OVERLAY DE MANOS Y PUNTERO (SIEMPRE AL FRENTE DE LA PESTAÑA DE GOOGLE) ──
