@@ -2470,6 +2470,9 @@ class MainActivity : AppCompatActivity() {
             setRadioGroupEnabled(trackingModeGroup, isChecked)
             switchCameraOverlay.isEnabled = isChecked
             if (isChecked) {
+                if (switchSixDof.isChecked && (!supportsConcurrentCameras || sixDofHandMode != SixDofHandMode.NONE)) {
+                    switchSixDof.isChecked = false
+                }
                 if (currentTrackingMode == TrackingMode.NONE)
                     trackingModeGroup.check(R.id.modeHand)
                 else
@@ -2503,7 +2506,7 @@ class MainActivity : AppCompatActivity() {
                     sixDofSubPanel.visibility = View.GONE
                     showStatus("Solo 1 cámara disponible: desactiva el tracking de manos o usa un modo '6DoF + Manos'")
                 } else {
-                    if (sixDofHandMode != SixDofHandMode.NONE && switchHand.isChecked) {
+                    if (switchHand.isChecked) {
                         switchHand.isChecked = false
                     }
                     startSixDofRequestingPermission()
