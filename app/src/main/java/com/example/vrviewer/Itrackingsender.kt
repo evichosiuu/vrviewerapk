@@ -21,6 +21,7 @@ interface ITrackingSender {
     fun setHandJoyconsMode(active: Boolean)
     fun setPlainHandJoyconsMode(active: Boolean)
     fun recenter()
+    fun triggerSystemButtonPulse()
     fun start(sm: SensorManager)
     fun stop()
 }
