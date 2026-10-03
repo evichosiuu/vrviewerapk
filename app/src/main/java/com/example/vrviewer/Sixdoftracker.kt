@@ -20,6 +20,7 @@ import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
+import java.util.EnumSet
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -155,14 +156,18 @@ class SixDofTracker(
                 try {
                     val filter = CameraConfigFilter(s)
                         .setFacingDirection(CameraConfig.FacingDirection.BACK)
+                        .setTargetFps(EnumSet.of(CameraConfig.TargetFps.TARGET_FPS_60, CameraConfig.TargetFps.TARGET_FPS_30))
                     val configs = s.getSupportedCameraConfigs(filter)
                     if (configs.isNotEmpty()) {
-                        val smallest = configs.minByOrNull { it.imageSize.width * it.imageSize.height }
-                        smallest?.let {
+                        val selected = configs.sortedWith(
+                            compareByDescending<CameraConfig> { it.fpsRange.upper >= 60 }
+                                .thenBy { it.imageSize.width * it.imageSize.height }
+                        ).firstOrNull()
+                        selected?.let {
                             s.cameraConfig = it
                             Log.i(
                                 "SixDofTracker",
-                                "CameraConfig elegido: ${it.imageSize.width}x${it.imageSize.height} " +
+                                "CameraConfig elegido: ${it.imageSize.width}x${it.imageSize.height} fps=${it.fpsRange} " +
                                         "(de ${configs.size} opciones disponibles)"
                             )
                         }
@@ -170,7 +175,7 @@ class SixDofTracker(
                         Log.w("SixDofTracker", "getSupportedCameraConfigs() devolvió vacío, usando config por defecto")
                     }
                 } catch (e: Exception) {
-                    Log.w("SixDofTracker", "No se pudo forzar CameraConfig de baja resolución: ${e.message}")
+                    Log.w("SixDofTracker", "No se pudo forzar CameraConfig de alta frecuencia: ${e.message}")
                 }
 
                 val config = Config(s).apply {

@@ -281,7 +281,7 @@ class MainActivity : AppCompatActivity() {
     private val BITRATE_MAX = 150.0f
 
     private val FPS_PRESETS = listOf(30, 45, 60, 72, 90)
-    private var fpsIndex = 0
+    private var fpsIndex = 2
 
     private val DIST_STEP = 0.02f
     private val DIST_MIN  = 0.0f
