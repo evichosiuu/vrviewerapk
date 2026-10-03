@@ -38,7 +38,10 @@ class ColorTracker(
         private const val SAMPLE_STEP     = 3
     }
 
-    fun start(owner: LifecycleOwner) {
+    fun start(
+        owner: LifecycleOwner,
+        cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    ) {
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
             try {
@@ -48,7 +51,7 @@ class ColorTracker(
                     .build()
                 analysis.setAnalyzer(executor) { processFrame(it) }
                 cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, analysis)
+                cameraProvider?.bindToLifecycle(owner, cameraSelector, analysis)
             } catch (e: Exception) {
                 onError("ColorTracker: error iniciando cámara: ${e.message}")
             }

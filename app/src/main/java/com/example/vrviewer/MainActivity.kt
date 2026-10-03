@@ -26,13 +26,20 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.VideoView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.core.CameraSelector
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
@@ -197,6 +204,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var handZoomDownButton: Button
     private lateinit var handZoomUpButton:   Button
     private lateinit var handZoomLabelText:  TextView
+
+    private lateinit var spinnerTrackingCamera: Spinner
+    private var availableTrackingCameras: List<TrackingCameraOption> = emptyList()
+    private var selectedCameraIndex = 0
 
 
     private lateinit var cameraOverlayPanel: FrameLayout
@@ -365,6 +376,7 @@ class MainActivity : AppCompatActivity() {
         setupLensControls()
         setupSixDofSensitivityControls()
         setupHandZoomControls()
+        setupTrackingCameraControls()
         setupControlPanelSwipe()
         setupGamepad()
         setupSixDofCapabilities()
@@ -507,6 +519,8 @@ class MainActivity : AppCompatActivity() {
         handZoomDownButton = findViewById(R.id.handZoomDownButton)
         handZoomUpButton   = findViewById(R.id.handZoomUpButton)
         handZoomLabelText  = findViewById(R.id.handZoomLabelText)
+
+        spinnerTrackingCamera = findViewById(R.id.spinnerTrackingCamera)
 
         cameraOverlayPanel = findViewById(R.id.cameraOverlayPanel)
         cameraPreviewView  = findViewById(R.id.cameraPreviewView)
@@ -1065,6 +1079,86 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateHandZoomLabel() {
         handZoomLabelText.text = "Zoom cámara: %.2f×".format(handCameraZoom)
+    }
+
+    private fun setupTrackingCameraControls() {
+        availableTrackingCameras = discoverTrackingCameras()
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            availableTrackingCameras.map { it.name }
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerTrackingCamera.adapter = adapter
+
+        val prefs = getSharedPreferences("vr_camera_tracking", MODE_PRIVATE)
+        val savedId = prefs.getString("selected_camera_id", null)
+        if (savedId != null) {
+            val foundIdx = availableTrackingCameras.indexOfFirst { it.id == savedId }
+            if (foundIdx >= 0) selectedCameraIndex = foundIdx
+        }
+        if (selectedCameraIndex in availableTrackingCameras.indices) {
+            spinnerTrackingCamera.setSelection(selectedCameraIndex)
+        }
+
+        spinnerTrackingCamera.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position in availableTrackingCameras.indices && position != selectedCameraIndex) {
+                    selectedCameraIndex = position
+                    val selectedOption = availableTrackingCameras[position]
+                    prefs.edit().putString("selected_camera_id", selectedOption.id).apply()
+                    if (currentTrackingMode != TrackingMode.NONE) {
+                        startTracker(currentTrackingMode)
+                    }
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+
+    private fun discoverTrackingCameras(): List<TrackingCameraOption> {
+        val list = mutableListOf<TrackingCameraOption>()
+        try {
+            val cm = getSystemService(CAMERA_SERVICE) as CameraManager
+            for (id in cm.cameraIdList) {
+                val characteristics = cm.getCameraCharacteristics(id)
+                val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+                val facingLabel = when (facing) {
+                    CameraCharacteristics.LENS_FACING_BACK -> "Trasera"
+                    CameraCharacteristics.LENS_FACING_FRONT -> "Frontal"
+                    CameraCharacteristics.LENS_FACING_EXTERNAL -> "Externa"
+                    else -> "Cámara"
+                }
+                val selector = CameraSelector.Builder()
+                    .addCameraFilter { cameraInfos ->
+                        cameraInfos.filter { info ->
+                            try {
+                                Camera2CameraInfo.from(info).cameraId == id
+                            } catch (_: Exception) {
+                                false
+                            }
+                        }
+                    }
+                    .build()
+                list.add(TrackingCameraOption(id, "$facingLabel ($id)", selector))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error descubriendo cámaras: ${e.message}")
+        }
+
+        if (list.isEmpty()) {
+            list.add(TrackingCameraOption("back", "Cámara Trasera", CameraSelector.DEFAULT_BACK_CAMERA))
+            list.add(TrackingCameraOption("front", "Cámara Frontal", CameraSelector.DEFAULT_FRONT_CAMERA))
+        }
+        return list
+    }
+
+    private fun getSelectedCameraSelector(): CameraSelector {
+        return if (selectedCameraIndex in availableTrackingCameras.indices) {
+            availableTrackingCameras[selectedCameraIndex].selector
+        } else {
+            CameraSelector.DEFAULT_BACK_CAMERA
+        }
     }
 
 
@@ -2529,20 +2623,22 @@ class MainActivity : AppCompatActivity() {
             cameraOverlayPanel.visibility =
                 if (switchCameraOverlay.isChecked && !streamActive) View.VISIBLE else View.GONE
         }
+        val selector = getSelectedCameraSelector()
         when (mode) {
             TrackingMode.HAND, TrackingMode.HAND_JOYCONS -> {
                 cameraManager?.startWithHandTracker(
-                    owner   = this,
-                    onHands = { l, r -> vrSender?.updateHands(l, r) },
-                    onError = { msg  -> runOnUiThread { showStatus(msg) } },
-                    onReady = {
+                    owner          = this,
+                    onHands        = { l, r -> vrSender?.updateHands(l, r) },
+                    onError        = { msg  -> runOnUiThread { showStatus(msg) } },
+                    onReady        = {
                         runOnUiThread {
                             if (switchCameraOverlay.isChecked && !streamActive)
                                 cameraOverlayPanel.visibility = View.VISIBLE
                             window.decorView.requestFocus()
                             if (mode == TrackingMode.HAND_JOYCONS) warnIfNoJoyConsConnected()
                         }
-                    }
+                    },
+                    cameraSelector = selector
                 )
                 showStatus(
                     if (mode == TrackingMode.HAND_JOYCONS)
@@ -2553,16 +2649,17 @@ class MainActivity : AppCompatActivity() {
             }
             TrackingMode.LED_BLUE, TrackingMode.LED_GREEN -> {
                 cameraManager?.startWithColorTracker(
-                    owner   = this,
-                    onHands = { l, r -> vrSender?.updateHands(l, r) },
-                    onError = { msg  -> runOnUiThread { showStatus(msg) } },
-                    onReady = {
+                    owner          = this,
+                    onHands        = { l, r -> vrSender?.updateHands(l, r) },
+                    onError        = { msg  -> runOnUiThread { showStatus(msg) } },
+                    onReady        = {
                         runOnUiThread {
                             if (switchCameraOverlay.isChecked && !streamActive)
                                 cameraOverlayPanel.visibility = View.VISIBLE
                             window.decorView.requestFocus()
                         }
-                    }
+                    },
+                    cameraSelector = selector
                 )
                 showStatus("Tracking: LED verde=izq 🟢  azul=der 🔵")
             }
@@ -2620,3 +2717,9 @@ class MainActivity : AppCompatActivity() {
         window.decorView.requestFocus()
     }
 }
+
+data class TrackingCameraOption(
+    val id: String,
+    val name: String,
+    val selector: CameraSelector
+)

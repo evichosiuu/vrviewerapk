@@ -51,7 +51,10 @@ class HandTracker(
     private val leftClickDetector  = PinchClickDetector()
     private val rightClickDetector = PinchClickDetector()
 
-    fun start(lifecycleOwner: LifecycleOwner) {
+    fun start(
+        lifecycleOwner: LifecycleOwner,
+        cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    ) {
         try { setupLandmarker() }
         catch (e: Exception) { onError("Error cargando hand_landmarker.task: ${e.message}"); return }
 
@@ -65,7 +68,7 @@ class HandTracker(
                 analysis.setAnalyzer(cameraExecutor) { imageProxy -> processFrame(imageProxy) }
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(
-                    lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, analysis
+                    lifecycleOwner, cameraSelector, analysis
                 )
             } catch (e: Exception) { onError("Error iniciando cámara: ${e.message}") }
         }, ContextCompat.getMainExecutor(context))
