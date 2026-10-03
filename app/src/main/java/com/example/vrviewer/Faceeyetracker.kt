@@ -40,7 +40,10 @@ class FaceEyeTracker(
     private val MAX_YAW_DEG   = 30f
     private val MAX_PITCH_DEG = 25f
 
-    fun start(owner: LifecycleOwner) {
+    fun start(
+        owner: LifecycleOwner,
+        cameraSelector: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+    ) {
         try {
             setupLandmarker()
         } catch (e: Exception) {
@@ -59,7 +62,7 @@ class FaceEyeTracker(
 
                 cameraProvider?.bindToLifecycle(
                     owner,
-                    CameraSelector.DEFAULT_FRONT_CAMERA,
+                    cameraSelector,
                     analysis
                 )
                 onReady?.invoke()

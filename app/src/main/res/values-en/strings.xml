@@ -87,6 +87,7 @@
     <string name="str_mode_hand_joycons">🕹 Hands + Joycons</string>
 
     <string name="str_camera_skeleton">Camera + skeleton view</string>
+    <string name="str_tracking_camera">Tracking camera</string>
     <string name="str_eye_tracking">Eye Tracking (VRChat OSC)</string>
     <string name="str_eye_tracking_status">Front camera · OSC to VRChat, port 9000</string>
 

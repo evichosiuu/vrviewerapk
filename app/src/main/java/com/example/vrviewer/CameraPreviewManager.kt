@@ -27,10 +27,11 @@ class CameraPreviewManager(
     private val TARGET_ANALYSIS_SIZE = Size(640, 480)
 
     fun startWithHandTracker(
-        owner:    LifecycleOwner,
-        onHands:  (HandPose, HandPose) -> Unit,
-        onError:  (String) -> Unit,
-        onReady:  (() -> Unit)? = null
+        owner:          LifecycleOwner,
+        onHands:        (HandPose, HandPose) -> Unit,
+        onError:        (String) -> Unit,
+        onReady:        (() -> Unit)? = null,
+        cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     ) {
         stopInternal()
         executor = Executors.newSingleThreadExecutor()
@@ -67,7 +68,7 @@ class CameraPreviewManager(
                 cameraProvider?.unbindAll()
                 camera = cameraProvider?.bindToLifecycle(
                     owner,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    cameraSelector,
                     preview,
                     analysis
                 )
@@ -81,10 +82,11 @@ class CameraPreviewManager(
     }
 
     fun startWithColorTracker(
-        owner:   LifecycleOwner,
-        onHands: (HandPose, HandPose) -> Unit,
-        onError: (String) -> Unit,
-        onReady: (() -> Unit)? = null
+        owner:          LifecycleOwner,
+        onHands:        (HandPose, HandPose) -> Unit,
+        onError:        (String) -> Unit,
+        onReady:        (() -> Unit)? = null,
+        cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     ) {
         stopInternal()
         executor = Executors.newSingleThreadExecutor()
@@ -115,7 +117,7 @@ class CameraPreviewManager(
                 cameraProvider?.unbindAll()
                 camera = cameraProvider?.bindToLifecycle(
                     owner,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    cameraSelector,
                     preview,
                     analysis
                 )
