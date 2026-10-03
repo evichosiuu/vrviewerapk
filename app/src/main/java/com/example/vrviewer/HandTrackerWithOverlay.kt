@@ -218,7 +218,13 @@ class HandTrackerWithOverlay(
                 qx = qCorrected[0], qy = qCorrected[1], qz = qCorrected[2], qw = qCorrected[3],
                 grip = grip, pinch = pinch,
                 curlThumb = curls[0], curlIndex = curls[1], curlMiddle = curls[2],
-                curlRing = curls[3], curlPinky = curls[4]
+                curlRing = curls[3], curlPinky = curls[4],
+                pinchMiddle = extraPinches[0],
+                pinchRing = extraPinches[1],
+                pinchPinky = extraPinches[2],
+                buttonAPressed = if (isRight) rightButtonAClickDetector.isHeld() else leftButtonAClickDetector.isHeld(),
+                buttonBPressed = if (isRight) rightButtonBClickDetector.isHeld() else leftButtonBClickDetector.isHeld(),
+                buttonSystemPressed = if (isRight) rightButtonSystemClickDetector.isHeld() else leftButtonSystemClickDetector.isHeld()
             )
             val pts = landmarks.map { PointF(it.x(), it.y()) }
 

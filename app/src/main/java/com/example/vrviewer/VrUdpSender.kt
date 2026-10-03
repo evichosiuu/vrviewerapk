@@ -71,6 +71,7 @@ class VrUdpSender(
 
 
     @Volatile private var plainHandJoyconsModeActive = false
+    @Volatile private var sysPulseUntilMs = 0L
 
     private val secret = byteArrayOf(
         0x4b, 0x3a, 0x1f, 0x08.toByte(),
@@ -108,7 +109,9 @@ class VrUdpSender(
 
     override fun recenter() { refQuat = null }
 
-
+    override fun triggerSystemButtonPulse() {
+        sysPulseUntilMs = System.currentTimeMillis() + 300L
+    }
 
     override fun start(sm: SensorManager) {
         sensorManager = sm
@@ -263,9 +266,16 @@ class VrUdpSender(
                 buf.putFloat(java.lang.Float.intBitsToFloat(sessionToken))
 
 
+                val nowMs = System.currentTimeMillis()
+                val isPulse = nowMs < sysPulseUntilMs
+
                 val lh = mergeHandRotation(leftHand, leftGamepad)
                 val lg = leftGamepad
                 val (lTrigger, lGrip) = mergeHandInput(lh, lg)
+                val lSys = lg.sysBtn || lh.buttonSystemPressed || isPulse
+                val lApp = lg.appBtn || lh.buttonAPressed
+                val lClick = lg.clickBtn || lh.buttonBPressed
+
                 buf.putFloat(lh.x)
                 buf.putFloat(lh.y)
                 buf.putFloat(lh.z)
@@ -277,9 +287,9 @@ class VrUdpSender(
                 buf.putFloat(lGrip)
                 buf.putFloat(lg.joyX)
                 buf.putFloat(lg.joyY)
-                buf.putFloat(if (lg.sysBtn)   1f else 0f)
-                buf.putFloat(if (lg.appBtn)   1f else 0f)
-                buf.putFloat(if (lg.clickBtn) 1f else 0f)
+                buf.putFloat(if (lSys)   1f else 0f)
+                buf.putFloat(if (lApp)   1f else 0f)
+                buf.putFloat(if (lClick) 1f else 0f)
                 buf.putFloat(if (lh.tracked)  1f else 0f)
                 buf.putFloat(lh.curlThumb)
                 buf.putFloat(lh.curlIndex)
@@ -291,6 +301,10 @@ class VrUdpSender(
                 val rh = mergeHandRotation(rightHand, rightGamepad)
                 val rg = rightGamepad
                 val (rTrigger, rGrip) = mergeHandInput(rh, rg)
+                val rSys = rg.sysBtn || rh.buttonSystemPressed || isPulse
+                val rApp = rg.appBtn || rh.buttonAPressed
+                val rClick = rg.clickBtn || rh.buttonBPressed
+
                 buf.putFloat(rh.x)
                 buf.putFloat(rh.y)
                 buf.putFloat(rh.z)
@@ -302,9 +316,9 @@ class VrUdpSender(
                 buf.putFloat(rGrip)
                 buf.putFloat(rg.joyX)
                 buf.putFloat(rg.joyY)
-                buf.putFloat(if (rg.sysBtn)   1f else 0f)
-                buf.putFloat(if (rg.appBtn)   1f else 0f)
-                buf.putFloat(if (rg.clickBtn) 1f else 0f)
+                buf.putFloat(if (rSys)   1f else 0f)
+                buf.putFloat(if (rApp)   1f else 0f)
+                buf.putFloat(if (rClick) 1f else 0f)
                 buf.putFloat(if (rh.tracked)  1f else 0f)
                 buf.putFloat(rh.curlThumb)
                 buf.putFloat(rh.curlIndex)

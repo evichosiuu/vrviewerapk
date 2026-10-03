@@ -267,10 +267,9 @@ class MainActivity : AppCompatActivity() {
 
     private var bitrateMbps = 6.0f
     private val BITRATE_MIN = 2.0f
-    private val BITRATE_MAX = 12.0f
-    private val BITRATE_STEP = 1.0f
+    private val BITRATE_MAX = 150.0f
 
-    private val FPS_PRESETS = listOf(30, 45, 60)
+    private val FPS_PRESETS = listOf(30, 45, 60, 72, 90)
     private var fpsIndex = 0
 
     private val DIST_STEP = 0.02f
@@ -1594,6 +1593,9 @@ class MainActivity : AppCompatActivity() {
         stopStreamInternal()
         streamActive = true
 
+        vrSender?.setHmdEnabled(true)
+        vrSender?.triggerSystemButtonPulse()
+
         applyQuality()
 
         vrAudioReceiver?.stop()
@@ -1717,11 +1719,21 @@ class MainActivity : AppCompatActivity() {
             if (resIndex < RES_PRESETS.size - 1) { resIndex++; applyQuality() }
         }
         brDownButton.setOnClickListener {
-            bitrateMbps = (bitrateMbps - BITRATE_STEP).coerceAtLeast(BITRATE_MIN)
+            val step = when {
+                bitrateMbps <= 10.0f -> 1.0f
+                bitrateMbps <= 50.0f -> 5.0f
+                else -> 10.0f
+            }
+            bitrateMbps = (bitrateMbps - step).coerceAtLeast(BITRATE_MIN)
             applyQuality()
         }
         brUpButton.setOnClickListener {
-            bitrateMbps = (bitrateMbps + BITRATE_STEP).coerceAtMost(BITRATE_MAX)
+            val step = when {
+                bitrateMbps < 10.0f -> 1.0f
+                bitrateMbps < 50.0f -> 5.0f
+                else -> 10.0f
+            }
+            bitrateMbps = (bitrateMbps + step).coerceAtMost(BITRATE_MAX)
             applyQuality()
         }
         fpsDownButton.setOnClickListener {
@@ -1735,7 +1747,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateQualityLabels() {
         resLabelText.text = RES_PRESETS[resIndex].label
-        brLabelText.text  = "%.1f Mbps".format(bitrateMbps)
+        brLabelText.text  = if (bitrateMbps % 1f == 0f) "${bitrateMbps.toInt()} Mbps" else "%.1f Mbps".format(bitrateMbps)
         fpsLabelText.text = "${FPS_PRESETS[fpsIndex]} FPS"
     }
 
@@ -1750,7 +1762,8 @@ class MainActivity : AppCompatActivity() {
             } else {
                 StreamQualityController.sendQuality(connectedPcIp, preset.w, preset.h, bitrate, fps)
             }
-            showStatus("Calidad: ${preset.label} · ${"%.1f".format(bitrateMbps)} Mbps · ${fps}fps")
+            val brStr = if (bitrateMbps % 1f == 0f) "${bitrateMbps.toInt()}" else "%.1f".format(bitrateMbps)
+            showStatus("Calidad: ${preset.label} · $brStr Mbps · ${fps}fps")
         }
     }
 
@@ -2278,6 +2291,7 @@ class MainActivity : AppCompatActivity() {
                 connectingInProgress = false
                 connectedPcIp = if (type == ConnectionType.USB_ADB) "127.0.0.1" else pcIp
 
+                vrSender?.setHmdEnabled(switchHmd.isChecked)
                 vrSender?.setSixDofEnabled(switchSixDof.isChecked && sixDofTracker != null)
                 updateHandJoyconsFlag()
 
