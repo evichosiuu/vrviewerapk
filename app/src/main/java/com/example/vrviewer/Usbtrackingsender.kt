@@ -32,6 +32,7 @@ class UsbTrackingSender(
     private val running = AtomicBoolean(false)
     private val resultReported = AtomicBoolean(false)
     private val sendLock = Any()
+    private val packetBuffer = ByteBuffer.allocate(PACKET_BYTES).order(ByteOrder.LITTLE_ENDIAN)
 
     private var socket: Socket? = null
     private var out: DataOutputStream? = null
@@ -195,7 +196,8 @@ class UsbTrackingSender(
     // Mismo layout de 196 bytes que VrUdpSender.doSendLoop(): token +
     // mano izq (20 floats) + mano der (20 floats) + hmd (8 floats).
     private fun buildPacket(): ByteArray {
-        val buf = ByteBuffer.allocate(PACKET_BYTES).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = packetBuffer
+        buf.clear()
         buf.putFloat(java.lang.Float.intBitsToFloat(sessionToken))
 
         val nowMs = System.currentTimeMillis()
