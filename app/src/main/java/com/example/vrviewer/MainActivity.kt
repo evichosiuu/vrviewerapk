@@ -755,12 +755,9 @@ class MainActivity : AppCompatActivity() {
     private fun copyAssetToCache(assetName: String): File {
         val outFile = File(cacheDir, assetName)
         assets.open(assetName).use { input ->
-            val assetSize = input.available()
-            if (!outFile.exists() || outFile.length() != assetSize.toLong()) {
-                assets.open(assetName).use { freshInput ->
-                    FileOutputStream(outFile).use { output ->
-                        freshInput.copyTo(output)
-                    }
+            if (!outFile.exists() || outFile.length() != input.available().toLong()) {
+                FileOutputStream(outFile).use { output ->
+                    input.copyTo(output)
                 }
             }
         }
