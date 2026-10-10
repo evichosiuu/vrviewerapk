@@ -4,6 +4,57 @@ import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.media.Image
 
+private val threadLocalImgArgbBuffer = object : ThreadLocal<IntArray>() {
+    override fun initialValue(): IntArray? = null
+}
+
+private val threadLocalImgYBytes = object : ThreadLocal<ByteArray>() {
+    override fun initialValue(): ByteArray? = null
+}
+
+private val threadLocalImgUBytes = object : ThreadLocal<ByteArray>() {
+    override fun initialValue(): ByteArray? = null
+}
+
+private val threadLocalImgVBytes = object : ThreadLocal<ByteArray>() {
+    override fun initialValue(): ByteArray? = null
+}
+
+private fun getReusableImgArgbBuffer(requiredSize: Int): IntArray {
+    var buffer = threadLocalImgArgbBuffer.get()
+    if (buffer == null || buffer.size < requiredSize) {
+        buffer = IntArray(requiredSize)
+        threadLocalImgArgbBuffer.set(buffer)
+    }
+    return buffer
+}
+
+private fun getReusableImgYBuffer(requiredSize: Int): ByteArray {
+    var buffer = threadLocalImgYBytes.get()
+    if (buffer == null || buffer.size < requiredSize) {
+        buffer = ByteArray(requiredSize)
+        threadLocalImgYBytes.set(buffer)
+    }
+    return buffer
+}
+
+private fun getReusableImgUBuffer(requiredSize: Int): ByteArray {
+    var buffer = threadLocalImgUBytes.get()
+    if (buffer == null || buffer.size < requiredSize) {
+        buffer = ByteArray(requiredSize)
+        threadLocalImgUBytes.set(buffer)
+    }
+    return buffer
+}
+
+private fun getReusableImgVBuffer(requiredSize: Int): ByteArray {
+    var buffer = threadLocalImgVBytes.get()
+    if (buffer == null || buffer.size < requiredSize) {
+        buffer = ByteArray(requiredSize)
+        threadLocalImgVBytes.set(buffer)
+    }
+    return buffer
+}
 
 fun Image.toBitmapFastHalf(): Bitmap? {
     if (format != ImageFormat.YUV_420_888) return null
@@ -22,7 +73,7 @@ fun Image.toBitmapFastHalf(): Bitmap? {
 
     val W2 = width  / 2
     val H2 = height / 2
-    val argb = IntArray(W2 * H2)
+    val argb = getReusableImgArgbBuffer(W2 * H2)
 
     for (row in 0 until H2) {
         val srcRow = row * 2
@@ -48,7 +99,6 @@ fun Image.toBitmapFastHalf(): Bitmap? {
 }
 
 
-
 private const val IMG_COEF_R_V = 89858   // 1.370705 * 65536
 private const val IMG_COEF_G_U = 22124   // 0.337633 * 65536
 private const val IMG_COEF_G_V = 45744   // 0.698001 * 65536
@@ -68,12 +118,16 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val srcW = width
     val srcH = height
 
-    val yBytes = ByteArray(yPlane.buffer.remaining())
-    yPlane.buffer.get(yBytes)
-    val uBytes = ByteArray(uPlane.buffer.remaining())
-    uPlane.buffer.get(uBytes)
-    val vBytes = ByteArray(vPlane.buffer.remaining())
-    vPlane.buffer.get(vBytes)
+    val yRemaining = yPlane.buffer.remaining()
+    val uRemaining = uPlane.buffer.remaining()
+    val vRemaining = vPlane.buffer.remaining()
+
+    val yBytes = getReusableImgYBuffer(yRemaining)
+    yPlane.buffer.get(yBytes, 0, yRemaining)
+    val uBytes = getReusableImgUBuffer(uRemaining)
+    uPlane.buffer.get(uBytes, 0, uRemaining)
+    val vBytes = getReusableImgVBuffer(vRemaining)
+    vPlane.buffer.get(vBytes, 0, vRemaining)
 
     val longSide = maxOf(srcW, srcH)
     var sample = (longSide + maxDim - 1) / maxDim
@@ -84,7 +138,7 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val outH = srcH / sample
     if (outW <= 0 || outH <= 0) return null
 
-    val argb = IntArray(outW * outH)
+    val argb = getReusableImgArgbBuffer(outW * outH)
 
     for (row in 0 until outH) {
         val srcRow = row * sample
