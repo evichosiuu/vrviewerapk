@@ -259,9 +259,10 @@ class VrUdpSender(
         try {
             val addr = InetAddress.getByName(pcIp)
             val sock = DatagramSocket()
+            val buf = ByteBuffer.allocate(196).order(ByteOrder.LITTLE_ENDIAN)
 
             while (running.get() && sessionActive.get()) {
-                val buf = ByteBuffer.allocate(196).order(ByteOrder.LITTLE_ENDIAN)
+                buf.clear()
 
                 buf.putFloat(java.lang.Float.intBitsToFloat(sessionToken))
 
