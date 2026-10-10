@@ -4,6 +4,32 @@ import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import androidx.camera.core.ImageProxy
 
+private val tlFastArgbBuffer = ThreadLocal<IntArray>()
+private val tlFastHalfArgbBuffer = ThreadLocal<IntArray>()
+
+private val tlHandTrackingArgbBuffer = ThreadLocal<IntArray>()
+private val tlHandTrackingYBuffer = ThreadLocal<ByteArray>()
+private val tlHandTrackingUBuffer = ThreadLocal<ByteArray>()
+private val tlHandTrackingVBuffer = ThreadLocal<ByteArray>()
+
+private fun getOrCreateIntArray(tl: ThreadLocal<IntArray>, minSize: Int): IntArray {
+    var arr = tl.get()
+    if (arr == null || arr.size < minSize) {
+        arr = IntArray(minSize)
+        tl.set(arr)
+    }
+    return arr
+}
+
+private fun getOrCreateByteArray(tl: ThreadLocal<ByteArray>, minSize: Int): ByteArray {
+    var arr = tl.get()
+    if (arr == null || arr.size < minSize) {
+        arr = ByteArray(minSize)
+        tl.set(arr)
+    }
+    return arr
+}
+
 fun ImageProxy.toBitmapFast(): Bitmap? {
     if (format != ImageFormat.YUV_420_888) return null
 
@@ -21,7 +47,7 @@ fun ImageProxy.toBitmapFast(): Bitmap? {
 
     val W = width
     val H = height
-    val argb = IntArray(W * H)
+    val argb = getOrCreateIntArray(tlFastArgbBuffer, W * H)
 
     for (row in 0 until H) {
         for (col in 0 until W) {
@@ -41,7 +67,7 @@ fun ImageProxy.toBitmapFast(): Bitmap? {
         }
     }
 
-    return Bitmap.createBitmap(argb, W, H, Bitmap.Config.ARGB_8888)
+    return Bitmap.createBitmap(argb, 0, W, W, H, Bitmap.Config.ARGB_8888)
 }
 
 
@@ -62,7 +88,7 @@ fun ImageProxy.toBitmapFastHalf(): Bitmap? {
 
     val W2 = width  / 2
     val H2 = height / 2
-    val argb = IntArray(W2 * H2)
+    val argb = getOrCreateIntArray(tlFastHalfArgbBuffer, W2 * H2)
 
     for (row in 0 until H2) {
         val srcRow = row * 2
@@ -84,7 +110,7 @@ fun ImageProxy.toBitmapFastHalf(): Bitmap? {
         }
     }
 
-    return Bitmap.createBitmap(argb, W2, H2, Bitmap.Config.ARGB_8888)
+    return Bitmap.createBitmap(argb, 0, W2, W2, H2, Bitmap.Config.ARGB_8888)
 }
 
 
@@ -108,12 +134,20 @@ fun ImageProxy.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val srcW = width
     val srcH = height
 
-    val yBytes = ByteArray(yPlane.buffer.remaining())
-    yPlane.buffer.get(yBytes)
-    val uBytes = ByteArray(uPlane.buffer.remaining())
-    uPlane.buffer.get(uBytes)
-    val vBytes = ByteArray(vPlane.buffer.remaining())
-    vPlane.buffer.get(vBytes)
+    val yBuf = yPlane.buffer.duplicate()
+    val yRem = yBuf.remaining()
+    val yBytes = getOrCreateByteArray(tlHandTrackingYBuffer, yRem)
+    yBuf.get(yBytes, 0, yRem)
+
+    val uBuf = uPlane.buffer.duplicate()
+    val uRem = uBuf.remaining()
+    val uBytes = getOrCreateByteArray(tlHandTrackingUBuffer, uRem)
+    uBuf.get(uBytes, 0, uRem)
+
+    val vBuf = vPlane.buffer.duplicate()
+    val vRem = vBuf.remaining()
+    val vBytes = getOrCreateByteArray(tlHandTrackingVBuffer, vRem)
+    vBuf.get(vBytes, 0, vRem)
 
 
     val longSide = maxOf(srcW, srcH)
@@ -125,7 +159,7 @@ fun ImageProxy.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val outH = srcH / sample
     if (outW <= 0 || outH <= 0) return null
 
-    val argb = IntArray(outW * outH)
+    val argb = getOrCreateIntArray(tlHandTrackingArgbBuffer, outW * outH)
 
     for (row in 0 until outH) {
         val srcRow = row * sample
@@ -149,5 +183,5 @@ fun ImageProxy.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
         }
     }
 
-    return Bitmap.createBitmap(argb, outW, outH, Bitmap.Config.ARGB_8888)
+    return Bitmap.createBitmap(argb, 0, outW, outW, outH, Bitmap.Config.ARGB_8888)
 }
