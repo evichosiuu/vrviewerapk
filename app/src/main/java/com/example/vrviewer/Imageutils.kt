@@ -4,8 +4,39 @@ import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.media.Image
 
+internal class YuvBufferCache {
+    var yBytes = ByteArray(0)
+    var uBytes = ByteArray(0)
+    var vBytes = ByteArray(0)
+    var argb = IntArray(0)
 
-fun Image.toBitmapFastHalf(): Bitmap? {
+    fun getYBytes(size: Int): ByteArray {
+        if (yBytes.size < size) yBytes = ByteArray(size)
+        return yBytes
+    }
+
+    fun getUBytes(size: Int): ByteArray {
+        if (uBytes.size < size) uBytes = ByteArray(size)
+        return uBytes
+    }
+
+    fun getVBytes(size: Int): ByteArray {
+        if (vBytes.size < size) vBytes = ByteArray(size)
+        return vBytes
+    }
+
+    fun getArgb(size: Int): IntArray {
+        if (argb.size < size) argb = IntArray(size)
+        return argb
+    }
+}
+
+internal val threadLocalYuvBufferCache = object : ThreadLocal<YuvBufferCache>() {
+    override fun initialValue(): YuvBufferCache = YuvBufferCache()
+}
+
+
+fun Image.toBitmapFastHalf(outBuffer: IntArray? = null): Bitmap? {
     if (format != ImageFormat.YUV_420_888) return null
 
     val yPlane = planes[0]
@@ -22,7 +53,11 @@ fun Image.toBitmapFastHalf(): Bitmap? {
 
     val W2 = width  / 2
     val H2 = height / 2
-    val argb = IntArray(W2 * H2)
+    if (W2 <= 0 || H2 <= 0) return null
+    val needed = W2 * H2
+
+    val cache = threadLocalYuvBufferCache.get()!!
+    val argb = if (outBuffer != null && outBuffer.size >= needed) outBuffer else cache.getArgb(needed)
 
     for (row in 0 until H2) {
         val srcRow = row * 2
@@ -44,7 +79,7 @@ fun Image.toBitmapFastHalf(): Bitmap? {
         }
     }
 
-    return Bitmap.createBitmap(argb, W2, H2, Bitmap.Config.ARGB_8888)
+    return Bitmap.createBitmap(argb, 0, W2, W2, H2, Bitmap.Config.ARGB_8888)
 }
 
 
@@ -54,7 +89,7 @@ private const val IMG_COEF_G_U = 22124   // 0.337633 * 65536
 private const val IMG_COEF_G_V = 45744   // 0.698001 * 65536
 private const val IMG_COEF_B_U = 113563  // 1.732446 * 65536
 
-fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
+fun Image.toBitmapForHandTracking(maxDim: Int = 256, outBuffer: IntArray? = null): Bitmap? {
     if (format != ImageFormat.YUV_420_888) return null
 
     val yPlane = planes[0]
@@ -68,12 +103,18 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val srcW = width
     val srcH = height
 
-    val yBytes = ByteArray(yPlane.buffer.remaining())
-    yPlane.buffer.get(yBytes)
-    val uBytes = ByteArray(uPlane.buffer.remaining())
-    uPlane.buffer.get(uBytes)
-    val vBytes = ByteArray(vPlane.buffer.remaining())
-    vPlane.buffer.get(vBytes)
+    val ySize = yPlane.buffer.remaining()
+    val uSize = uPlane.buffer.remaining()
+    val vSize = vPlane.buffer.remaining()
+
+    val cache = threadLocalYuvBufferCache.get()!!
+    val yBytes = cache.getYBytes(ySize)
+    val uBytes = cache.getUBytes(uSize)
+    val vBytes = cache.getVBytes(vSize)
+
+    yPlane.buffer.get(yBytes, 0, ySize)
+    uPlane.buffer.get(uBytes, 0, uSize)
+    vPlane.buffer.get(vBytes, 0, vSize)
 
     val longSide = maxOf(srcW, srcH)
     var sample = (longSide + maxDim - 1) / maxDim
@@ -84,7 +125,8 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val outH = srcH / sample
     if (outW <= 0 || outH <= 0) return null
 
-    val argb = IntArray(outW * outH)
+    val needed = outW * outH
+    val argb = if (outBuffer != null && outBuffer.size >= needed) outBuffer else cache.getArgb(needed)
 
     for (row in 0 until outH) {
         val srcRow = row * sample
@@ -108,5 +150,5 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
         }
     }
 
-    return Bitmap.createBitmap(argb, outW, outH, Bitmap.Config.ARGB_8888)
+    return Bitmap.createBitmap(argb, 0, outW, outW, outH, Bitmap.Config.ARGB_8888)
 }
