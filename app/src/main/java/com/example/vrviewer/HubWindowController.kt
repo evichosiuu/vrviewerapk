@@ -112,7 +112,7 @@ class HubWindowController(
         val proj = CameraMath.cameraToScreen(local, halfFovXTan, halfFovYTan)
         if (proj == null) { visible = false; return }
         visible = true
-        screenX = proj[0]; screenY = proj[1]; depthMeters = proj[2]
+        screenX = proj[0]; screenY = proj[1]; depthMeters = -local[2]
         screenHalfW = baseHalfWidthM * scale / (depthMeters * halfFovXTan)
         screenHalfH = baseHalfHeightM * scale / (depthMeters * halfFovYTan)
 

@@ -36,11 +36,14 @@ object CameraMath {
         return floatArrayOf(r[0]+camPos[0], r[1]+camPos[1], r[2]+camPos[2])
     }
 
-    /** Proyección tipo pinhole a NDC aproximado. null si queda detrás de la cámara. */
+    /** Proyecta una posición local a NDC (-1 a 1), retorna null si está detrás de la cámara */
     fun cameraToScreen(local: FloatArray, halfFovXTan: Float, halfFovYTan: Float): FloatArray? {
-        val depth = -local[2]
-        if (depth < 0.05f) return null
-        return floatArrayOf((local[0] / depth) / halfFovXTan, (local[1] / depth) / halfFovYTan, depth)
+        val z = -local[2] // Z negativo es hacia adelante en el estándar OpenGL/Camera
+        if (z <= 0.01f) return null // Detrás o muy cerca de la cámara
+
+        val ndcX = local[0] / (z * halfFovXTan)
+        val ndcY = local[1] / (z * halfFovYTan)
+        return floatArrayOf(ndcX, ndcY)
     }
 
     fun screenToCameraLocal(ndcX: Float, ndcY: Float, depth: Float, halfFovXTan: Float, halfFovYTan: Float): FloatArray =
