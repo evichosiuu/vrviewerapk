@@ -642,6 +642,7 @@ class MainActivity : AppCompatActivity() {
                     launchStreamReceiver(surface)
                 }
                 if (pendingHubStartAfterSurface) {
+                    pendingHubStartAfterSurface = false
                     startHubInternal()
                 }
                 pendingSbsVideoUri?.let { uri ->
