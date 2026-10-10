@@ -709,12 +709,14 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun isValidIpAddress(ip: String): Boolean {
-        val parts = ip.trim().split(".")
-        if (parts.size != 4) return false
-        return parts.all { part ->
-            part.isNotEmpty() && part.all { c -> c.isDigit() } &&
-                    (part.toIntOrNull()?.let { it in 0..255 } == true)
+    companion object {
+        internal fun isValidIpAddress(ip: String): Boolean {
+            val parts = ip.trim().split(".")
+            if (parts.size != 4) return false
+            return parts.all { part ->
+                part.isNotEmpty() && part.all { c -> c.isDigit() } &&
+                        (part.toIntOrNull()?.let { it in 0..255 } == true)
+            }
         }
     }
 
