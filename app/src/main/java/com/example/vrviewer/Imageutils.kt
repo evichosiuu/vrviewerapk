@@ -4,6 +4,30 @@ import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.media.Image
 
+private val tlImageFastHalfArgbBuffer = ThreadLocal<IntArray>()
+
+private val tlImageHandTrackingArgbBuffer = ThreadLocal<IntArray>()
+private val tlImageHandTrackingYBuffer = ThreadLocal<ByteArray>()
+private val tlImageHandTrackingUBuffer = ThreadLocal<ByteArray>()
+private val tlImageHandTrackingVBuffer = ThreadLocal<ByteArray>()
+
+private fun getOrCreateIntArray(tl: ThreadLocal<IntArray>, minSize: Int): IntArray {
+    var arr = tl.get()
+    if (arr == null || arr.size < minSize) {
+        arr = IntArray(minSize)
+        tl.set(arr)
+    }
+    return arr
+}
+
+private fun getOrCreateByteArray(tl: ThreadLocal<ByteArray>, minSize: Int): ByteArray {
+    var arr = tl.get()
+    if (arr == null || arr.size < minSize) {
+        arr = ByteArray(minSize)
+        tl.set(arr)
+    }
+    return arr
+}
 
 fun Image.toBitmapFastHalf(): Bitmap? {
     if (format != ImageFormat.YUV_420_888) return null
@@ -22,7 +46,7 @@ fun Image.toBitmapFastHalf(): Bitmap? {
 
     val W2 = width  / 2
     val H2 = height / 2
-    val argb = IntArray(W2 * H2)
+    val argb = getOrCreateIntArray(tlImageFastHalfArgbBuffer, W2 * H2)
 
     for (row in 0 until H2) {
         val srcRow = row * 2
@@ -44,9 +68,8 @@ fun Image.toBitmapFastHalf(): Bitmap? {
         }
     }
 
-    return Bitmap.createBitmap(argb, W2, H2, Bitmap.Config.ARGB_8888)
+    return Bitmap.createBitmap(argb, 0, W2, W2, H2, Bitmap.Config.ARGB_8888)
 }
-
 
 
 private const val IMG_COEF_R_V = 89858   // 1.370705 * 65536
@@ -68,12 +91,20 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val srcW = width
     val srcH = height
 
-    val yBytes = ByteArray(yPlane.buffer.remaining())
-    yPlane.buffer.get(yBytes)
-    val uBytes = ByteArray(uPlane.buffer.remaining())
-    uPlane.buffer.get(uBytes)
-    val vBytes = ByteArray(vPlane.buffer.remaining())
-    vPlane.buffer.get(vBytes)
+    val yBuf = yPlane.buffer.duplicate()
+    val yRem = yBuf.remaining()
+    val yBytes = getOrCreateByteArray(tlImageHandTrackingYBuffer, yRem)
+    yBuf.get(yBytes, 0, yRem)
+
+    val uBuf = uPlane.buffer.duplicate()
+    val uRem = uBuf.remaining()
+    val uBytes = getOrCreateByteArray(tlImageHandTrackingUBuffer, uRem)
+    uBuf.get(uBytes, 0, uRem)
+
+    val vBuf = vPlane.buffer.duplicate()
+    val vRem = vBuf.remaining()
+    val vBytes = getOrCreateByteArray(tlImageHandTrackingVBuffer, vRem)
+    vBuf.get(vBytes, 0, vRem)
 
     val longSide = maxOf(srcW, srcH)
     var sample = (longSide + maxDim - 1) / maxDim
@@ -84,7 +115,7 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
     val outH = srcH / sample
     if (outW <= 0 || outH <= 0) return null
 
-    val argb = IntArray(outW * outH)
+    val argb = getOrCreateIntArray(tlImageHandTrackingArgbBuffer, outW * outH)
 
     for (row in 0 until outH) {
         val srcRow = row * sample
@@ -108,5 +139,5 @@ fun Image.toBitmapForHandTracking(maxDim: Int = 256): Bitmap? {
         }
     }
 
-    return Bitmap.createBitmap(argb, outW, outH, Bitmap.Config.ARGB_8888)
+    return Bitmap.createBitmap(argb, 0, outW, outW, outH, Bitmap.Config.ARGB_8888)
 }
